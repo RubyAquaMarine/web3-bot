@@ -1,0 +1,34 @@
+{
+  "account": {
+    "privateKey": "",
+    "publicKey": ""
+  },
+  "rpc": {
+    "fantom": "https://rpc.fantom.network",
+    "schainRuby": "0x5881cDF4028C74E449889dCc9D33bce37653D603"
+  },
+  "spookyswap": {
+    "assets": {
+      "wftmContract": "0x21be370d5312f44cb42ce377bc9b8a0cef1a4c83",
+      "usdcContract": "0x04068da6c83afcfa0e13ba15a6696662335d5b75",
+      "ethContract": "0x74b23882a30290451A17c44f4F05243b6b58C76d",
+      "btcContract": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
+    },
+    "router": "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+  },
+  "swap": {
+    "amount" :"1",
+    "type" :"A",
+    "typeA" :"swapExactETHForTokens",
+    "typeB" :"swapExactTokensForETH",
+    "typeC" :"swapExactTokensForTokens",
+    "fromAddress": "0x21be370d5312f44cb42ce377bc9b8a0cef1a4c83",
+    "toAddress": "0x04068da6c83afcfa0e13ba15a6696662335d5b75"
+  },
+  "tools": {
+    "m1" : "60000",
+    "m5" : "300000",
+    "claimInMinutes": "10",
+    "gasLimit": "250000"
+  }
+}
