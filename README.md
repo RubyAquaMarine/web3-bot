@@ -1,15 +1,16 @@
 # config 
 rename config copy.json to config.json (add private key)
 - privateKey ,rpc,contract addresses ,etc
-- swap.type A,B,C
-Only Swap type A is working.  aka swapExactETHForTokens
+- swap.type A,B,C, D
+Only Swap type A is working on master branch (web3).  aka swapExactETHForTokens.  Moving on to Ethers.js , branch ethers
 
 # Todo 
-- fix swap.type B and C
+- fix swap.type C + D
 
 # Agenda
-- pool reserves vs the effect of the position size => slippage => price movement. Take swaps large enough to make the price move at internals. Such as every 1 to 5 minutes. 
-- M1, 14 swaps(buying x asset) , then 5 swaps(selling x asset), create HH.HL price structure. 
+- Size: pool reserves vs the effect of the position size => slippage => price movement. Take swaps large enough to make the price move at internals. Such as every 1 to 5 minutes. 
+- Execution: M1, 14 swaps(buying x asset) , then 5 swaps(selling x asset), create HH.HL price structure. 
+- Simplify: automate the contract Token Decimals (math fuckery) USDC (6) and Most (18)
 
 # learning 
 - deadline : if this value is incorrect, the transactions will be reverted by the EVM

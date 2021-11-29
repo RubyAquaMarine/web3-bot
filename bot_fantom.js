@@ -59,8 +59,8 @@ async function doStuff() {
 
     if (credentials.swap.type == 'C') {
         swap_tx = await routerContract.swapExactTokensForTokens(
-            weiAmount,
-            amountOut,
+            weiAmount,// amountIn
+            amountOut,// amountOutIn
             [fromToken, toToken],
             publicKey,
             expiryDate,
