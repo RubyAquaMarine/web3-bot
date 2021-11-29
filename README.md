@@ -13,3 +13,9 @@ Only Swap type A is working.  aka swapExactETHForTokens
 
 # learning 
 - deadline : if this value is incorrect, the transactions will be reverted by the EVM
+
+# cannot estimate gas
+When you run contract.myTransaction(...), ethers js does 2 rpcalls to node internally:
+
+Makes an estimate gas rpcall to the node. If call reverts you will get error cannot estimate gas that you are getting. (I don't think a gas estimate requires to have enough eth at an address)
+Since estimation was successful, it signs tx and sends to the node. If funds are not present, the node returns an error result, which ethers js throws as insufficient funds
