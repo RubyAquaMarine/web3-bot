@@ -5,7 +5,8 @@ rename config copy.json to config.json (add private key)
 Only Swap type A is working on master branch (web3).  aka swapExactETHForTokens.  Moving on to Ethers.js , branch ethers
 
 # Todo 
-- fix swap.type C + D
+- fix deadline using blockNumber , done
+- Assets approval: instantiate the tokens as contracts (the same way you're doing for the uniswap router), and then call the allowance function:
 
 # Agenda
 - Size: pool reserves vs the effect of the position size => slippage => price movement. Take swaps large enough to make the price move at internals. Such as every 1 to 5 minutes. 

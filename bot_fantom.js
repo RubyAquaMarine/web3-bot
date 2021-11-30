@@ -1,13 +1,14 @@
 const { getAddress } = require('@ethersproject/address');
 const ethers = require('ethers');
 const routerABI = require('./abi/spooky_router.json');
+const erc20ABI = require('./abi/erc20.json');
 const credentials = require('./config/config.json');
 
 const provider = new ethers.providers.JsonRpcProvider(credentials.rpc.fantom);
 
 const privateKey = credentials.account.privateKey;
 
-const publicKey = credentials.account.publicKey;
+const publicAddress = credentials.account.publicAddress;
 
 const wallet = new ethers.Wallet(privateKey);
 // creates the Signer abstract class => into the Signer client
@@ -22,18 +23,53 @@ const fromToken = credentials.swap.fromAddress;
 
 const toToken = credentials.swap.toAddress;
 
-const expiryDate = Math.floor(Date.now() / 1000) + 15000;
+const fromContract = new ethers.Contract(credentials.swap.fromAddress, erc20ABI, account);
+
+/*
+working
+    - Check the allowance amount given to the router
+    - Increase the allowance if necessary
+    - Function should be checked before each swap to ensure the transaction can go through (refactor later)
+*/
+
+async function doApproval() {
+
+    const weiAmount = ethers.utils.parseUnits(credentials.swap.amount, 'ether');
+
+    let allowanceAmount = await fromContract.allowance(publicAddress, credentials.spookyswap.router);
+
+    console.log("Router Contract Allowance: " + allowanceAmount.toString(), allowanceAmount);
+
+    if (allowanceAmount.toString() == "0" || weiAmount.toString() >= allowanceAmount.toString()) {
+
+        console.log("Router Contract Needs Increased Allowance: ");
+
+        const increase = weiAmount.mul(10);
+
+        const parse = await fromContract.approve(credentials.spookyswap.router, increase);
+
+        const receipt = await parse.wait();
+
+        console.log("Router Contract Result: ", receipt);
+    }
+}
+
+
 
 async function doStuff() {
 
     //Provider 
-    const block = await provider.getBlockNumber();
+    const blockNumber = await provider.getBlockNumber();
 
-    const balance = await provider.getBalance(publicKey);
+    const balance = await provider.getBalance(publicAddress);
 
     const gas_try = await provider.getGasPrice();
 
-    console.log(" Block: " + block + " Balance: " + balance + " GasPrice: " + gas_try.toString());
+    const blockData = await provider.getBlock(blockNumber);
+
+    const expiryDate = ethers.BigNumber.from(blockData.timestamp + 23600);
+
+    console.log(" BlockNumber: " + blockNumber + " Balance: " + balance + " GasPrice: " + gas_try.toString());
 
     //Signer 
     const address = await account.getAddress();
@@ -62,7 +98,7 @@ async function doStuff() {
             weiAmount,// amountIn
             amountOut,// amountOutIn
             [fromToken, toToken],
-            publicKey,
+            publicAddress,
             expiryDate,
             // these value are BigNumbers. maybe thats the issue 
             {
@@ -72,17 +108,17 @@ async function doStuff() {
             }
 
         ).then(result => {
-
-            //  console.log("Processing Result: ", result);
+            // result is another promise =. deal with it 
             let out = result.wait().then(ok => {
                 console.log("Result: ", ok);
             }).catch(err => {
                 console.log("Result Error: ", err);
             });
-
         }).catch(err => {
             console.log("Processing Error: ", err);
         });
+     //   let receipt = await swap_tx.wait(); // wait for 1 block
+     //   console.log("SwapReceipt: ", receipt); // sanity check
     }
 
     if (credentials.swap.type == 'D') {
@@ -90,7 +126,7 @@ async function doStuff() {
             amountOut,// amountOut
             weiAmount,// amountInMax
             [fromToken, toToken],
-            publicKey,
+            publicAddress,
             expiryDate,
             // these value are BigNumbers. maybe thats the issue 
             {
@@ -100,24 +136,26 @@ async function doStuff() {
             }
 
         ).then(result => {
-
-            //  console.log("Processing Result: ", result);
+            // result is another promise =. deal with it 
             let out = result.wait().then(ok => {
                 console.log("Result: ", ok);
             }).catch(err => {
                 console.log("Result Error: ", err);
             });
-
         }).catch(err => {
             console.log("Processing Error: ", err);
         });
+      //  let receipt = await swap_tx.wait(); // wait for 1 block
+      //  console.log("SwapReceipt: ", receipt); // sanity check
     }
 
+     
 };
 
 
 function run() {
     console.log("Bot is running... after timerSpeed expires, the bot will perform an action");
+    doApproval();
     setInterval(doStuff, timerSpeed);
 };
 
