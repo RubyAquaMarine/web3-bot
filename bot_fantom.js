@@ -69,7 +69,7 @@ async function doStuff() {
 
     const expiryDate = ethers.BigNumber.from(blockData.timestamp + 23600);
 
-    console.log(" BlockNumber: " + blockNumber + " Balance: " + balance + " GasPrice: " + gas_try.toString());
+    console.log(" BlockNumber: " + blockNumber + " Balance: " + balance + " GasPrice: " + gas_try.toString() + "\nExpires: " + expiryDate + " | Time: " + blockData.timestamp);
 
     //Signer 
     const address = await account.getAddress();
@@ -78,9 +78,14 @@ async function doStuff() {
 
     console.log(" My Wallet Address: " + address + " TransactionCount: " + nonce);
 
+    let decimalDigit = await fromContract.decimals();
+
     const originalAmount = credentials.swap.amount;
 
-    const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
+    // let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
+
+    const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigit);
+    // const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
 
     const price_try = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]);
 
@@ -93,14 +98,71 @@ async function doStuff() {
 
     var swap_tx = '';
 
-    if (credentials.swap.type == 'C') {
-        swap_tx = await routerContract.swapExactTokensForTokens(
-            weiAmount,// amountIn
-            amountOut,// amountOutIn
+
+    if (credentials.swap.type == 'A') {
+        swap_tx = await routerContract.swapExactETHForTokens(
+            amountOut,// amountOutMin
             [fromToken, toToken],
             publicAddress,
             expiryDate,
-            // these value are BigNumbers. maybe thats the issue 
+
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce,
+                "value": weiAmount
+            }
+
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
+    }
+
+    if (credentials.swap.type == 'B') {
+        swap_tx = await routerContract.swapExactTokensForETH(
+            weiAmount,// amountIn
+            amountOut,// amountOutMin
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
+
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce,
+            }
+
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
+    }
+
+    if (credentials.swap.type == 'C') {
+        swap_tx = await routerContract.swapExactTokensForTokens(
+            weiAmount,// amountIn
+            amountOut,// amountOuMin
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
+
             {
                 "gasPrice": try_string,
                 "gasLimit": "280000",
@@ -117,8 +179,8 @@ async function doStuff() {
         }).catch(err => {
             console.log("Processing Error: ", err);
         });
-     //   let receipt = await swap_tx.wait(); // wait for 1 block
-     //   console.log("SwapReceipt: ", receipt); // sanity check
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
     }
 
     if (credentials.swap.type == 'D') {
@@ -128,7 +190,7 @@ async function doStuff() {
             [fromToken, toToken],
             publicAddress,
             expiryDate,
-            // these value are BigNumbers. maybe thats the issue 
+
             {
                 "gasPrice": try_string,
                 "gasLimit": "280000",
@@ -145,11 +207,11 @@ async function doStuff() {
         }).catch(err => {
             console.log("Processing Error: ", err);
         });
-      //  let receipt = await swap_tx.wait(); // wait for 1 block
-      //  console.log("SwapReceipt: ", receipt); // sanity check
+        //  let receipt = await swap_tx.wait(); // wait for 1 block
+        //  console.log("SwapReceipt: ", receipt); // sanity check
     }
 
-     
+
 };
 
 
