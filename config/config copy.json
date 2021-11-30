@@ -5,7 +5,7 @@
   },
   "rpc": {
     "fantom": "https://rpc.fantom.network",
-    "schainRuby": "0x5881cDF4028C74E449889dCc9D33bce37653D603"
+    "schainRuby": "https://dappnet-api.skalenodes.com/v1/melodic-murzim"
   },
   "spookyswap": {
     "assets": {
@@ -15,6 +15,16 @@
       "btcContract": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
     },
     "router": "0xF491e7B69E4244ad4002BC14e878a34207E38c29"
+  },
+  "rubyexchange": {
+    "assets": {
+      "rubyContract": "0x2D76E3E55bB9E573af26043fb0c76cbbfAC95a2c",
+      "usdcContract": "0x95bdEd8476bCe6dE791224d2663fb9259778c80c",
+      "ethContract": "0x74b23882a30290451A17c44f4F05243b6b58C76d",
+      "btcContract": "0x321162Cd933E2Be498Cd2267a90534A804051b11"
+    },
+    "router": "0x7d18D7C457459148Ab1ad7423bCD7F2689B072a3",
+    "masterchef": "0x2090EbdE28485c67D4Fe69c47740d91144A14203"
   },
   "swap": {
     "amount" :"1",
