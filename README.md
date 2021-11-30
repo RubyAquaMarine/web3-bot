@@ -5,7 +5,9 @@ rename config copy.json to config.json (add private key)
 Only Swap type A is working on master branch (web3).  aka swapExactETHForTokens.  Moving on to Ethers.js , branch ethers
 
 # Progress
-- swap A,B,C,D work 
+- swap A,B,C,D : work on fantom (using Type C on ruby)
+- swap eth -> usdt,usdp,usdc : working
+- swap usdc,usdp -> eth : working
 
 # Todo 
 - call data once, store data, reusre data in ongoing swaps

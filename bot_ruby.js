@@ -2,6 +2,8 @@ const { getAddress } = require('@ethersproject/address');
 const ethers = require('ethers');
 const routerABI = require('./abi/ruby_router.json');
 const erc20ABI = require('./abi/erc20.json');
+const pairABI = require('./abi/pair.json');
+const factoryABI = require('./abi/factory.json');
 const credentials = require('./config/config.json');
 
 const provider = new ethers.providers.JsonRpcProvider(credentials.rpc.schainRuby);
@@ -15,7 +17,7 @@ const wallet = new ethers.Wallet(privateKey);
 // using one of the following  Wallet, VoidSigner, JsonRpcSigner
 const account = wallet.connect(provider);
 
-const timerSpeed = credentials.tools.m1;
+const timerSpeed = credentials.tools.s10;
 
 const routerContract = new ethers.Contract(credentials.rubyexchange.router, routerABI, account);
 
@@ -24,6 +26,17 @@ const fromToken = credentials.swap.fromAddress;
 const toToken = credentials.swap.toAddress;
 
 const fromContract = new ethers.Contract(credentials.swap.fromAddress, erc20ABI, account);
+const toContract = new ethers.Contract(credentials.swap.toAddress, erc20ABI, account);
+
+//var
+let balance = '';
+let gas_try = '';
+let try_string = '';
+let decimalDigitTokenA = '';
+let decimalDigitTokenB = '';
+let symbolTokenA = '';
+let symbolTokenB = '';
+let originalAmount = credentials.swap.amount;
 
 /*
 working
@@ -44,7 +57,9 @@ async function doApproval() {
 
         console.log("Router Contract Needs Increased Allowance: ");
 
-        const increase = weiAmount.mul(10);
+        const multiplier = parseInt(credentials.tools.maxTrades);
+
+        const increase = weiAmount.mul(multiplier);
 
         const parse = await fromContract.approve(credentials.rubyexchange.router, increase);
 
@@ -52,52 +67,78 @@ async function doApproval() {
 
         console.log("Router Contract Result: ", receipt);
     }
+
+    console.log("Router Contract Allowance Complete");
 }
 
+async function saveData() {
+    balance = await provider.getBalance(publicAddress);
+    gas_try = await provider.getGasPrice();
+    try_string = gas_try.toString();
+    decimalDigitTokenA = await fromContract.decimals();
+    decimalDigitTokenB = await toContract.decimals();
+    symbolTokenA = await fromContract.symbol();
+    symbolTokenB = await toContract.symbol();
 
+    let textOut = "------------------------" + 
+    "\nSymbol: " + symbolTokenA + "-" + symbolTokenB + 
+    "\nDigits: " + decimalDigitTokenA + "-" + decimalDigitTokenB + 
+    "\nGas: " + try_string + 
+    "\nskETH GasBalance: " + ethers.utils.formatUnits(balance.toString(), 18) + 
+    "\n------------------------";
+    console.log(textOut);
 
-async function doStuff() {
+}
+/*
+    Old
+    const address = await account.getAddress();
+    let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
+    const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
+*/
 
+async function doSwap() {
+   
     //Provider 
     const blockNumber = await provider.getBlockNumber();
-
-    const balance = await provider.getBalance(publicAddress);
-
-    const gas_try = await provider.getGasPrice();
 
     const blockData = await provider.getBlock(blockNumber);
 
     const expiryDate = ethers.BigNumber.from(blockData.timestamp + 23600);
 
-    console.log(" BlockNumber: " + blockNumber + " Balance: " + balance + " GasPrice: " + gas_try.toString() + "\nExpires: " + expiryDate + " | Time: " + blockData.timestamp);
+    console.log("Swap Expires: " + expiryDate + " | Time: " + blockData.timestamp);
 
     //Signer 
-    const address = await account.getAddress();
-
     const nonce = await account.getTransactionCount("latest");
 
-    console.log(" My Wallet Address: " + address + " TransactionCount: " + nonce);
+    console.log("TransactionCount: " + nonce);
 
-    let decimalDigit = await fromContract.decimals();
-
-    const originalAmount = credentials.swap.amount;
-
-    // let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
-
-    const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigit);
-    // const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
+    const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigitTokenA);
 
     const price_try = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]);
+/*
+    const factoryAddress = await routerContract.factory();
 
-    const amountOut = price_try[1].sub(price_try[1].div(10));// 10% slippage
+    const factoryContract = new ethers.Contract(factoryAddress, factoryABI, account);
 
-    let try_string = gas_try.toString();
+    const pairAddress = await factoryContract.getPair(fromToken, toToken);
+
+    const pairContract = new ethers.Contract(pairAddress, pairABI, account);
+
+    const pairReserves = await pairContract.getReserves();
+
+    const pairA = pairReserves[0];
+    const pairB = pairReserves[1];
+
+    const price = pairA.div(pairB);
+
+    console.log("Price: " + price + " [0]: " + pairA + " [1]: " + pairB);
+*/
+    const amountOut = price_try[1].sub(price_try[1].div(8));// 10++% slippage
 
     console.log("AmountsINN: ", weiAmount.toString());
     console.log("AmountsOUT: ", amountOut.toString());
 
-    var swap_tx = '';
-
+    let swap_tx = '';
 
     if (credentials.swap.type == 'A') {
         swap_tx = await routerContract.swapExactETHForTokens(
@@ -210,15 +251,14 @@ async function doStuff() {
         //  let receipt = await swap_tx.wait(); // wait for 1 block
         //  console.log("SwapReceipt: ", receipt); // sanity check
     }
-
-
 };
 
 
 function run() {
     console.log("Bot is running... after timerSpeed expires, the bot will perform an action");
+    saveData();
     doApproval();
-    setInterval(doStuff, timerSpeed);
+    setInterval(doSwap, timerSpeed);
 };
 
 run();
