@@ -13,19 +13,20 @@ const privateKey = credentials.account.rubyKey;
 const publicAddress = credentials.account.rubyAddress;
 
 const wallet = new ethers.Wallet(privateKey);
+
 // creates the Signer abstract class => into the Signer client
-// using one of the following  Wallet, VoidSigner, JsonRpcSigner
 const account = wallet.connect(provider);
 
-const timerSpeed = credentials.tools.s10;
-
-const routerContract = new ethers.Contract(credentials.rubyexchange.router, routerABI, account);
+const timerSpeed = credentials.tools.m1;
 
 const fromToken = credentials.swap.fromAddress;
 
 const toToken = credentials.swap.toAddress;
 
+const routerContract = new ethers.Contract(credentials.rubyexchange.router, routerABI, account);
+
 const fromContract = new ethers.Contract(credentials.swap.fromAddress, erc20ABI, account);
+
 const toContract = new ethers.Contract(credentials.swap.toAddress, erc20ABI, account);
 
 //var
@@ -89,6 +90,7 @@ async function saveData() {
     console.log(textOut);
 
 }
+
 /*
     Old
     const address = await account.getAddress();
@@ -97,6 +99,8 @@ async function saveData() {
 */
 
 async function doSwap() {
+
+    const chechApprovalValue = await doApproval();
    
     //Provider 
     const blockNumber = await provider.getBlockNumber();
@@ -115,7 +119,7 @@ async function doSwap() {
     const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigitTokenA);
 
     const price_try = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]);
-/*
+
     const factoryAddress = await routerContract.factory();
 
     const factoryContract = new ethers.Contract(factoryAddress, factoryABI, account);
@@ -128,12 +132,12 @@ async function doSwap() {
 
     const pairA = pairReserves[0];
     const pairB = pairReserves[1];
-
+    // only works on stable pairs which is fine for ruby since all pairs are based in USD
     const price = pairA.div(pairB);
 
     console.log("Price: " + price + " [0]: " + pairA + " [1]: " + pairB);
-*/
-    const amountOut = price_try[1].sub(price_try[1].div(8));// 10++% slippage
+
+    const amountOut = price_try[1].sub(price_try[1].div(8));// 10++% slippage - put this value within config
 
     console.log("AmountsINN: ", weiAmount.toString());
     console.log("AmountsOUT: ", amountOut.toString());

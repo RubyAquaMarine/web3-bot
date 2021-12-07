@@ -8,17 +8,15 @@ Only Swap type A is working on master branch (web3).  aka swapExactETHForTokens.
 - swap A,B,C,D : work on fantom (using Type C on ruby)
 - swap eth -> usdt,usdp,usdc : working
 - swap usdc,usdp -> eth : working
+- call data once, store data, reuse data in ongoing swaps 
+- Simplify: automate the contract Token Decimals (math fuckery) USDC (6) and Most (18)
 
 # Todo 
-- call data once, store data, reusre data in ongoing swaps
-- 
+- start working on aribtrage 
 
 # Agenda
 - Size: pool reserves vs the effect of the position size => slippage => price movement. Take swaps large enough to make the price move at internals. Such as every 1 to 5 minutes. 
 - Execution: M1, 14 swaps(buying x asset) , then 5 swaps(selling x asset), create HH.HL price structure. 
-
-# Done
-- Simplify: automate the contract Token Decimals (math fuckery) USDC (6) and Most (18)
 
 # learning 
 - deadline : if this value is incorrect, the transactions will be reverted by the EVM
