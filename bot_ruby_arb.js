@@ -17,7 +17,7 @@ const wallet = new ethers.Wallet(privateKey);
 // creates the Signer abstract class => into the Signer client
 const account = wallet.connect(provider);
 
-const timerSpeed = credentials.tools.m1;
+const timerSpeed = credentials.tools.s10;
 
 const routerContract = new ethers.Contract(credentials.rubyexchange.router, routerABI, account);
 

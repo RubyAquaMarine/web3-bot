@@ -87,15 +87,28 @@ async function saveData(tokenA, tokenB) {
 }
 
 /*
-    Old
-    const address = await account.getAddress();
-    let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
-    const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
+    switching the token to,from possible
+    need some trading logic
+    
 */
 let SwapCounter = 0;
 async function doSwap() {
 
     SwapCounter++;
+    let from, to;
+
+    if (SwapCounter > 2 && SwapCounter < 6) {
+        from = toToken;
+        to = fromToken;
+       await saveData(from, to);
+       await doApproval(from);
+
+    } else {
+        from = fromToken;
+        to = toToken;
+        await saveData(from, to);
+        await doApproval(from);
+    }
 
     //Provider 
     const blockNumber = await provider.getBlockNumber();
@@ -113,7 +126,7 @@ async function doSwap() {
 
     const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigitTokenA);
 
-    const amountOut = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]).then(result => {
+    const amountOut = await routerContract.getAmountsOut(weiAmount, [from, to]).then(result => {
         console.log("Result GetAmountsOut" + result[0].toString() + " | " + result[1].toString());
         return result;
     }).catch(err => {
@@ -122,7 +135,7 @@ async function doSwap() {
 
     const factoryAddress = await routerContract.factory();
     const factoryContract = new ethers.Contract(factoryAddress, factoryABI, account);
-    const pairAddress = await factoryContract.getPair(fromToken, toToken);
+    const pairAddress = await factoryContract.getPair(from, to);
     const pairContract = new ethers.Contract(pairAddress, pairABI, account);
     const pairReserves = await pairContract.getReserves();
 
@@ -201,7 +214,7 @@ async function doSwap() {
         swap_tx = await routerContract.swapExactTokensForTokens(
             weiAmount,// amountIn
             amountOut[1],// amountOuMin
-            [fromToken, toToken],
+            [from, to],
             publicAddress,
             expiryDate,
 
@@ -257,8 +270,6 @@ async function doSwap() {
 
 function run() {
     console.log("Bot is running... after timerSpeed expires, the bot will perform an action");
-    saveData(fromToken, toToken);
-    doApproval(fromToken);// how many swaps before the approval allowance runs out
     setInterval(doSwap, timerSpeed);
 };
 
