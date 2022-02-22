@@ -89,21 +89,41 @@ async function saveData(tokenA, tokenB) {
 /*
     switching the token to,from possible
     need some trading logic
+
+    function getRndInteger(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
     
 */
+
+function getRndInteger(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
+}
+
+
+
 let SwapCounter = 0;
+let signal;
 async function doSwap() {
 
+    let value = getRndInteger(0, 10);
+    let amountToFOMO = String(value*value);// to a string 
+   // let value = 5;
     SwapCounter++;
     let from, to;
-
-    if (SwapCounter > 2 && SwapCounter < 6) {
+    // greater than 6 is bullish
+    // 5 = flat 
+    // less than 4 is bearish
+    if (value > 50) {
+        signal = "SELL";
+        originalAmount = amountToFOMO;
         from = toToken;
         to = fromToken;
-       await saveData(from, to);
-       await doApproval(from);
-
+        await saveData(from, to);
+        await doApproval(from);
     } else {
+        originalAmount = amountToFOMO;
+        signal = "BUY";
         from = fromToken;
         to = toToken;
         await saveData(from, to);
@@ -148,67 +168,12 @@ async function doSwap() {
         + "\nAmountsINN: " + weiAmount.toString()
         + "\nAmountsOUT: " + amountOut[1].toString()
         + "\nSwap Counter: " + SwapCounter
+        + "\nSignal: " + signal
 
     );
 
 
     let swap_tx = '';
-
-    if (credentials.swap.type == 'A') {
-        swap_tx = await routerContract.swapExactETHForTokens(
-            amountOut,// amountOutMin
-            [fromToken, toToken],
-            publicAddress,
-            expiryDate,
-
-            {
-                "gasPrice": try_string,
-                "gasLimit": "280000",
-                "nonce": nonce,
-                "value": weiAmount
-            }
-
-        ).then(result => {
-            // result is another promise =. deal with it 
-            let out = result.wait().then(ok => {
-                console.log("Result: ", ok);
-            }).catch(err => {
-                console.log("Result Error: ", err);
-            });
-        }).catch(err => {
-            console.log("Processing Error: ", err);
-        });
-        //   let receipt = await swap_tx.wait(); // wait for 1 block
-        //   console.log("SwapReceipt: ", receipt); // sanity check
-    }
-
-    if (credentials.swap.type == 'B') {
-        swap_tx = await routerContract.swapExactTokensForETH(
-            weiAmount,// amountIn
-            amountOut,// amountOutMin
-            [fromToken, toToken],
-            publicAddress,
-            expiryDate,
-
-            {
-                "gasPrice": try_string,
-                "gasLimit": "280000",
-                "nonce": nonce,
-            }
-
-        ).then(result => {
-            // result is another promise =. deal with it 
-            let out = result.wait().then(ok => {
-                console.log("Result: ", ok);
-            }).catch(err => {
-                console.log("Result Error: ", err);
-            });
-        }).catch(err => {
-            console.log("Processing Error: ", err);
-        });
-        //   let receipt = await swap_tx.wait(); // wait for 1 block
-        //   console.log("SwapReceipt: ", receipt); // sanity check
-    }
 
     if (credentials.swap.type == 'C') {
         swap_tx = await routerContract.swapExactTokensForTokens(
@@ -227,7 +192,7 @@ async function doSwap() {
         ).then(result => {
             // result is another promise =. deal with it 
             let out = result.wait().then(ok => {
-                console.log("Swap Result: ", ok);
+               // console.log("Swap Result: ", ok);
             }).catch(err => {
                 console.log("Swap Result Error: ", err);
             });
