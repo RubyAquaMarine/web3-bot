@@ -1,34 +1,25 @@
-const { getAddress } = require('@ethersproject/address');
 const ethers = require('ethers');
 const routerABI = require('./abi/ruby_router.json');
+const nftABI = require('./abi/nft_admin.json');
 const erc20ABI = require('./abi/erc20.json');
 const pairABI = require('./abi/pair.json');
 const factoryABI = require('./abi/factory.json');
 const credentials = require('./config/config.json');
 
-const provider = new ethers.providers.JsonRpcProvider(credentials.rpc.schainRuby);
-
-const privateKey = credentials.account.rubyKey;
-
-const publicAddress = credentials.account.rubyAddress;
-
+const provider = new ethers.providers.JsonRpcProvider(credentials.rpc.schain_Europa);
+const privateKey = credentials.account.privateKey;
+const publicAddress = credentials.account.publicAddress;
 const wallet = new ethers.Wallet(privateKey);
-
-// creates the Signer abstract class => into the Signer client
 const account = wallet.connect(provider);
+/*
 
+*/
 const timerSpeed = credentials.tools.m1;
+const howManySwaps = credentials.swap.maxTrades;
+const fromToken = credentials.assets.europa.RUBY;
+const toToken = credentials.assets.europa.USDP;
 
-const fromToken = credentials.swap.fromAddress;
-
-const toToken = credentials.swap.toAddress;
-
-const howManySwaps = credentials.tools.maxTrades;
-
-
-// v2 be able to buy and sell 
-
-const routerContract = new ethers.Contract(credentials.rubyexchange.router, routerABI, account);
+const routerContract = new ethers.Contract(credentials.amm.router, routerABI, account);
 
 //var
 let balance = '';
@@ -42,20 +33,20 @@ let originalAmount = credentials.swap.amount;
 
 async function doApproval(token) {
 
-    let weiAmount = ethers.utils.parseUnits(credentials.swap.amount, 'ether');
+    let weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
 
     weiAmount = weiAmount.mul(howManySwaps);
 
     const fromContract = new ethers.Contract(token, erc20ABI, account);
 
-    let allowanceAmount = await fromContract.allowance(publicAddress, credentials.rubyexchange.router);
+    let allowanceAmount = await fromContract.allowance(publicAddress, credentials.amm.router);
 
     console.log("Router Contract Allowance: " + allowanceAmount.toString());
 
     if (allowanceAmount.toString() == "0" || weiAmount.gt(allowanceAmount)) {
         console.log("Router Contract Needs Increased Allowance: ");
 
-        const parse = await fromContract.approve(credentials.rubyexchange.router, weiAmount);
+        const parse = await fromContract.approve(credentials.amm.router, weiAmount);
 
         const receipt = await parse.wait();
 
@@ -113,11 +104,16 @@ async function doSwap() {
 
     const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigitTokenA);
 
-    const amountOut = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]).then(result => {
-        console.log("Result GetAmountsOut" + result[0].toString() + " | " + result[1].toString());
+    let nftAdmin = await routerContract.nftAdmin();
+    const nftContract = new ethers.Contract(nftAdmin, nftABI, account);
+    let fee= await nftContract.calculateAmmSwapFeeDeduction(account.address)
+    console.log("DEBUG swapFee ", fee.toString()) 
+
+    const amountOut = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken], fee).then(result => {
+        console.log("Result GetAmountsOut" + result);
         return result;
     }).catch(err => {
-        console.log("Error: ", err);
+        console.log("Error getAmountsOut: ", err);
     })
 
     const factoryAddress = await routerContract.factory();
@@ -255,10 +251,10 @@ async function doSwap() {
 };
 
 
-function run() {
+async function run() {
     console.log("Bot is running... after timerSpeed expires, the bot will perform an action");
-    saveData(fromToken, toToken);
-    doApproval(fromToken);// how many swaps before the approval allowance runs out
+    await saveData(fromToken, toToken);
+    await doApproval(fromToken);// how many swaps before the approval allowance runs out
     setInterval(doSwap, timerSpeed);
 };
 

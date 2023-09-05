@@ -5,7 +5,8 @@
   "main": "bot.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "snipe": "node bot.js"
+    "snipe": "node bot.js",
+    "ruby": "node bot_ruby.js"
   },
   "author": "",
   "license": "ISC",
