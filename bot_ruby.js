@@ -12,7 +12,7 @@ const publicAddress = credentials.account.publicAddress;
 const wallet = new ethers.Wallet(privateKey);
 const account = wallet.connect(provider);
 /*
-
+configure how quickly do you want to swap and how many swaps in total
 */
 const timerSpeed = credentials.tools.m1;
 const howManySwaps = credentials.swap.maxTrades;
@@ -77,12 +77,7 @@ async function saveData(tokenA, tokenB) {
     console.log(textOut);
 }
 
-/*
-    Old
-    const address = await account.getAddress();
-    let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
-    const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
-*/
+
 let SwapCounter = 0;
 async function doSwap() {
 
