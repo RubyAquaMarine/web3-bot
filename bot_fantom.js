@@ -1,113 +1,223 @@
-const Web3 = require('web3');
+const { getAddress } = require('@ethersproject/address');
+const ethers = require('ethers');
 const routerABI = require('./abi/spooky_router.json');
+const erc20ABI = require('./abi/erc20.json');
 const credentials = require('./config/config.json');
 
-const web3 = new Web3(new Web3.providers.HttpProvider(credentials.rpc.fantom));
+const provider = new ethers.providers.JsonRpcProvider(credentials.rpc.fantom);
 
 const privateKey = credentials.account.privateKey;
 
-const activeAccount = web3.eth.accounts.privateKeyToAccount(privateKey);
+const publicAddress = credentials.account.publicAddress;
+
+const wallet = new ethers.Wallet(privateKey);
+// creates the Signer abstract class => into the Signer client
+// using one of the following  Wallet, VoidSigner, JsonRpcSigner
+const account = wallet.connect(provider);
 
 const timerSpeed = credentials.tools.m1;
 
-const routerAddress = credentials.spookyswap.router;
-
-const routerContract = new web3.eth.Contract(routerABI, routerAddress);
+const routerContract = new ethers.Contract(credentials.spookyswap.router, routerABI, account);
 
 const fromToken = credentials.swap.fromAddress;
 
 const toToken = credentials.swap.toAddress;
 
-const expiryDate = Math.floor(Date.now() / 1000) + 1500;
+const fromContract = new ethers.Contract(credentials.swap.fromAddress, erc20ABI, account);
+
+/*
+working
+    - Check the allowance amount given to the router
+    - Increase the allowance if necessary
+    - Function should be checked before each swap to ensure the transaction can go through (refactor later)
+*/
+
+async function doApproval() {
+
+    const weiAmount = ethers.utils.parseUnits(credentials.swap.amount, 'ether');
+
+    let allowanceAmount = await fromContract.allowance(publicAddress, credentials.spookyswap.router);
+
+    console.log("Router Contract Allowance: " + allowanceAmount.toString(), allowanceAmount);
+
+    if (allowanceAmount.toString() == "0" || weiAmount.toString() >= allowanceAmount.toString()) {
+
+        console.log("Router Contract Needs Increased Allowance: ");
+
+        const increase = weiAmount.mul(10);
+
+        const parse = await fromContract.approve(credentials.spookyswap.router, increase);
+
+        const receipt = await parse.wait();
+
+        console.log("Router Contract Result: ", receipt);
+    }
+}
+
+
 
 async function doStuff() {
 
-    var originalAmount = credentials.swap.amount;
+    //Provider 
+    const blockNumber = await provider.getBlockNumber();
 
-    var weiAmount = await web3.utils.toWei(originalAmount, 'ether');
+    const balance = await provider.getBalance(publicAddress);
 
-    const price_try = await routerContract.methods.getAmountsOut(weiAmount, [fromToken, toToken]).call();
+    const gas_try = await provider.getGasPrice();
 
-    const amountOut = price_try[1];
+    const blockData = await provider.getBlock(blockNumber);
 
-    
-    console.log("AmountsINN: ", weiAmount);
-    console.log("AmountsOUT: ", amountOut);
+    const expiryDate = ethers.BigNumber.from(blockData.timestamp + 23600);
 
-    
-    console.log("AmountsINN_: ", web3.utils.fromWei(weiAmount));
-    console.log("AmountsOUT_: ", web3.utils.fromWei(amountOut));
+    console.log(" BlockNumber: " + blockNumber + " Balance: " + balance + " GasPrice: " + gas_try.toString() + "\nExpires: " + expiryDate + " | Time: " + blockData.timestamp);
 
+    //Signer 
+    const address = await account.getAddress();
 
+    const nonce = await account.getTransactionCount("latest");
 
-    //const quote = await routerContract.methods.quote(qty, fromToken, toToken).call();
+    console.log(" My Wallet Address: " + address + " TransactionCount: " + nonce);
+
+    let decimalDigit = await fromContract.decimals();
+
+    const originalAmount = credentials.swap.amount;
+
+    // let try_new = ethers.utils.formatUnits(originalAmount, 6);// 1 turns into 0.000001
+
+    const weiAmount = ethers.utils.parseUnits(originalAmount, decimalDigit);
+    // const weiAmount = ethers.utils.parseUnits(originalAmount, 'ether');
+
+    const price_try = await routerContract.getAmountsOut(weiAmount, [fromToken, toToken]);
+
+    const amountOut = price_try[1].sub(price_try[1].div(10));// 10% slippage
+
+    let try_string = gas_try.toString();
+
+    console.log("AmountsINN: ", weiAmount.toString());
+    console.log("AmountsOUT: ", amountOut.toString());
 
     var swap_tx = '';
+
+
     if (credentials.swap.type == 'A') {
-        var amountOutMin = '100' + Math.random().toString().slice(2, 6);
-        swap_tx = await routerContract.methods.swapExactETHForTokens(web3.utils.toHex(amountOutMin), [fromToken, toToken], activeAccount.address, expiryDate);
+        swap_tx = await routerContract.swapExactETHForTokens(
+            amountOut,// amountOutMin
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
+
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce,
+                "value": weiAmount
+            }
+
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
     }
 
     if (credentials.swap.type == 'B') {
-        swap_tx = await routerContract.methods.swapExactTokensForETH(weiAmount, 0, [fromToken, toToken], activeAccount.address, expiryDate);
+        swap_tx = await routerContract.swapExactTokensForETH(
+            weiAmount,// amountIn
+            amountOut,// amountOutMin
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
+
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce,
+            }
+
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
     }
 
     if (credentials.swap.type == 'C') {
-        const path = [fromToken, toToken]
-        swap_tx = await routerContract.methods.swapExactTokensForTokens(weiAmount, 0, path, activeAccount.address, expiryDate);
+        swap_tx = await routerContract.swapExactTokensForTokens(
+            weiAmount,// amountIn
+            amountOut,// amountOuMin
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
+
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce
+            }
+
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //   let receipt = await swap_tx.wait(); // wait for 1 block
+        //   console.log("SwapReceipt: ", receipt); // sanity check
     }
 
-    let encoded_tx = swap_tx.encodeABI();
+    if (credentials.swap.type == 'D') {
+        swap_tx = await routerContract.swapTokensForExactTokens(
+            amountOut,// amountOut
+            weiAmount,// amountInMax
+            [fromToken, toToken],
+            publicAddress,
+            expiryDate,
 
-   // const transactionNonce = await web3.eth.getTransactionCount(activeAccount.address, 'pending');
-   // console.log(`NONCE: `, transactionNonce);
+            {
+                "gasPrice": try_string,
+                "gasLimit": "280000",
+                "nonce": nonce
+            }
 
-    const gas_try = await web3.eth.getGasPrice();
-   // console.log(`GAS PRICE: `, gas_try);
-
-
-   /*
-   type C
-    debugging 
-    gasPrice: 21105880000 - error "transaction underpriced"
-    gasPrice: 211058800000 - error "insufficient funds for gas + price + value"
-
-    notes- 
-    - value: TokenAmount OR ETH toWei
-   */
-
-    let transactionObject = {
-        gasPrice: gas_try,
-        gas: 280000,
-        data: encoded_tx,
-        from: activeAccount.address,
-        to: routerAddress,
-        value: weiAmount
-    };
-
-    const signedTX = await web3.eth.accounts.signTransaction(transactionObject, activeAccount.privateKey, (error, signedTx) => {
-        console.log('Any Error: ', error);
-        console.log('Signed: ', signedTx.rawTransaction);
-        return signedTx;
-    });
+        ).then(result => {
+            // result is another promise =. deal with it 
+            let out = result.wait().then(ok => {
+                console.log("Result: ", ok);
+            }).catch(err => {
+                console.log("Result Error: ", err);
+            });
+        }).catch(err => {
+            console.log("Processing Error: ", err);
+        });
+        //  let receipt = await swap_tx.wait(); // wait for 1 block
+        //  console.log("SwapReceipt: ", receipt); // sanity check
+    }
 
 
-
-    await web3.eth.sendSignedTransaction(
-        signedTX.rawTransaction
-     //   , 
-     //    async (err,data) =>{
-     //        if(err){
-      //           console.log('sendSignedTransaction error',err)
-      //       }
-      //   }
-
-    ).on('receipt', receipt => console.log('END:\n\n: ', receipt));
 };
 
 
 function run() {
     console.log("Bot is running... after timerSpeed expires, the bot will perform an action");
+    doApproval();
     setInterval(doStuff, timerSpeed);
 };
 
